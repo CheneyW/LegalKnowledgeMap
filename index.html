@@ -23,6 +23,19 @@
             stroke: #ccc;
             stroke-width: 1.5px;
         }
+
+        .tooltip {
+            position: absolute;
+            width: 120px;
+            height: auto;
+            font_family: simsun;
+            font-size: 8px;
+            text_align: center;
+            border-style: solid;
+            border-width: 1px;
+            background-color: beige;
+            border-radius: 5px;
+        }
     </style>
 </head>
 
@@ -52,6 +65,11 @@
             .append("g")
             .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
+        var tooltip = d3.select("body")
+            .append("div")
+            .attr("class", "tooltip")
+            .style("opacity", 0.0);
+
         d3.json("data.json", function (error, flare) {
             if (error) throw error;
 
@@ -70,45 +88,54 @@
             root.children.forEach(collapse);
             update(root);
         });
-        d3.select(self.frameElement).style("height", "800px")
-        console.log(self.frameElement);
-        console.log(d3.select(self.frameElement));
+
+        // d3.select(self.frameElement).style("height", "800px")
 
         function update(source) {
 
-            // Compute the new tree layout.
+            // 计算新的布局
             var nodes = tree.nodes(root).reverse(),
                 links = tree.links(nodes);
 
-            // Normalize for fixed-depth.
+            // 计算树的深度
             nodes.forEach(function (d) {
-                if(d.depth==0){
+                if (d.depth == 0) {
                     d.y = 0;
-                }else if(d.depth==1){
-                    d.y = 400
-                }else{
-                    d.y = d.depth * 250 + 150
+                } else if (d._children == null && d.children == null) {
+                    d.y = d.depth * 200 + 100;
+                } else {
+                    d.y = d.depth * 200 + 200;
                 }
             });
 
-            // Update the nodes…
+            // 数据连接，根据id绑定数据
             var node = svg.selectAll("g.node")
                 .data(nodes, function (d) {
-                    return d.id || (d.id = ++i);
+                    return d.id //最初新点开的节点都没有id
+                        || (d.id = ++i); //为没有id的节点添加上ID
                 });
 
-            // Enter any new nodes at the parent's previous position.
+            // 点击时增加新的子节点
             var nodeEnter = node.enter().append("g")
                 .attr("class", "node")
                 .attr("transform", function (d) {
                     return "translate(" + source.y0 + "," + source.x0 + ")";
                 })
-                .on("click", click);
+                .on("click", click)
+                .on("mouseover", mouseover)
+                .on("mouseout", mouseout);
 
             nodeEnter.append("circle")
                 .attr("r", 1e-6)
                 .style("fill", function (d) {
-                    return d._children ? "lightsteelblue" : "#fff";
+                    if (d._children) {
+                        return "lightsteelblue"
+                    } else if (d.children) {
+                        return "#fff"
+                    } else {
+                        return "#f00"
+                    }
+                    // return d._children ? "lightsteelblue" : "#fff";
                 });
 
             nodeEnter.append("text")
@@ -124,7 +151,7 @@
                 })
                 .style("fill-opacity", 1e-6);
 
-            // Transition nodes to their new position.
+            //原有节点更新到新位置
             var nodeUpdate = node.transition()
                 .duration(duration)
                 .attr("transform", function (d) {
@@ -134,13 +161,20 @@
             nodeUpdate.select("circle")
                 .attr("r", 4.5)
                 .style("fill", function (d) {
-                    return d._children ? "lightsteelblue" : "#fff";
+                    if (d._children) {
+                        return "lightsteelblue"
+                    } else if (d.children) {
+                        return "#fff"
+                    } else {
+                        return "#f00"
+                    }
+                    // return d._children ? "lightsteelblue" : "#fff";
                 });
 
             nodeUpdate.select("text")
                 .style("fill-opacity", 1);
 
-            // Transition exiting nodes to the parent's new position.
+            // 折叠节点的子节点收缩回来
             var nodeExit = node.exit().transition()
                 .duration(duration)
                 .attr("transform", function (d) {
@@ -154,13 +188,13 @@
             nodeExit.select("text")
                 .style("fill-opacity", 1e-6);
 
-            // Update the links…
+            // 数据连接，根据目标节点的id绑定数据
             var link = svg.selectAll("path.link")
                 .data(links, function (d) {
                     return d.target.id;
                 });
 
-            // Enter any new links at the parent's previous position.
+            // 增加新连接
             link.enter().insert("path", "g")
                 .attr("class", "link")
                 .attr("d", function (d) {
@@ -168,12 +202,12 @@
                     return diagonal({source: o, target: o});
                 });
 
-            // Transition links to their new position.
+            // 原有连接更新位置
             link.transition()
                 .duration(duration)
                 .attr("d", diagonal);
 
-            // Transition exiting nodes to the parent's new position.
+            // 折叠的链接，收缩到源节点处
             link.exit().transition()
                 .duration(duration)
                 .attr("d", function (d) {
@@ -182,7 +216,7 @@
                 })
                 .remove();
 
-            // Stash the old positions for transition.
+            // 保存旧位置
             nodes.forEach(function (d) {
                 d.x0 = d.x;
                 d.y0 = d.y;
@@ -198,9 +232,26 @@
                 d.children = d._children;
                 d._children = null;
             }
+
+            if (d._children == null && d.children == null) {
+                alert('null');
+            }
+
             update(d);
         }
 
+        function mouseover(d) {
+            if (d._children == null && d.children == null) {
+                tooltip.html(d.lines)
+                    .style("left", (d3.event.pageX) + "px")
+                    .style("top", (d3.event.pageY + 20) + "px")
+                    .style("opacity", 0.8);
+            }
+        }
+
+        function mouseout(d) {
+            tooltip.style("opacity", 0.0);
+        }
     }
 
     startIni();
