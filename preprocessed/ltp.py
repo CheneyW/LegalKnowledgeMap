@@ -12,22 +12,28 @@ MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir,
 
 
 class LTP(object):
-    def __init__(self):
+    def __init__(self, seg=True, pos=False, ner=False, parser=False):
         # 停用词
         with open(os.path.join(MODEL_PATH, 'stopwords.txt'), 'r', encoding='utf-8') as f:
             self.stopwords = set(x.strip() for x in f.readlines())
         # 分词
         self.segmentor = Segmentor()  # 初始化实例
-        self.segmentor.load(os.path.join(MODEL_PATH, 'cws.model'))  # 加载模型
         # 词性标注
         self.postagger = Postagger()  # 初始化实例
-        self.postagger.load(os.path.join(MODEL_PATH, 'pos.model'))  # 加载模型
         # 命名实体识别
         self.recognizer = NamedEntityRecognizer()
-        self.recognizer.load(os.path.join(MODEL_PATH, 'ner.model'))
         # 依存句法分析
         self.parser = Parser()
-        self.parser.load(os.path.join(MODEL_PATH, 'parser.model'))
+
+        # 加载模型
+        if seg:
+            self.segmentor.load(os.path.join(MODEL_PATH, 'cws.model'))
+        if pos:
+            self.postagger.load(os.path.join(MODEL_PATH, 'pos.model'))
+        if ner:
+            self.recognizer.load(os.path.join(MODEL_PATH, 'ner.model'))
+        if parser:
+            self.parser.load(os.path.join(MODEL_PATH, 'parser.model'))
 
     def seg(self, sent):
         return list(self.segmentor.segment(sent))
@@ -40,9 +46,6 @@ class LTP(object):
 
     def parse(self, words, postags):
         return list(self.parser.parse(words, postags))
-
-    def stop_words(self, words):
-        return [x for x in words if x not in self.stop_words()]
 
 
 def test(seg):

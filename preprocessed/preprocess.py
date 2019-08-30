@@ -128,7 +128,7 @@ class Entry(object):
             self.lst = load['lst']
             self.keywords = load['keywords']
             self.segment = []
-            self.candidate = load['candidate']
+            self.candidate = []
             self.tfidf, self.textrank = [], []
             return
 
@@ -155,7 +155,6 @@ class Entry(object):
         this['lines'] = self.lines
         this['lst'] = self.lst
         this['keywords'] = self.keywords
-        this['candidate'] = self.candidate
         this['tfidf'], this['textrank'] = self.tfidf, self.textrank
         return this
 
