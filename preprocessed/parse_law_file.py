@@ -129,7 +129,7 @@ class Entry(object):
             self.keywords = load['keywords']
             self.segment = []
             self.candidate = []
-            self.tfidf, self.textrank = [], []
+            self.tfidf, self.textrank = load['tfidf'], load['textrank']
             return
 
         self.title = re.search('第[\u4E00-\u9FA5]+?条', lines[0]).group()

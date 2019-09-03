@@ -10,7 +10,7 @@ import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 from preprocessed.ltp import LTP
-from preprocessed.preprocess import load_data, save_data
+from preprocessed.parse_law_file import load_data, save_data
 from extract_keyword.baseline.textrank import textrank_keyword
 
 count = 0
