@@ -11,7 +11,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 
 from preprocessed.ltp import LTP
 from preprocessed.parse_law_file import load_data, save_data
-from extract_keyword.baseline.textrank import textrank_keyword
+from extract.baseline.textrank import textrank_keyword
 
 count = 0
 
@@ -22,6 +22,7 @@ class Extractor(object):
         self.filter_rate = []
         self.ltp = LTP(seg=True, pos=True, ner=True, parser=True)
 
+    def run(self):
         for i, law in enumerate(self.law_lst):
             print('(%d/%d) %s' % (i + 1, len(self.law_lst), law.name))
             self.extract_law(law)
@@ -30,8 +31,22 @@ class Extractor(object):
         print('filter_rate :', self.filter_rate)
         save_data(self.law_lst)
 
-    # 提取
-    def extract_law(self, law, textrank=True):
+    def extract_law(self, law, textrank_rate=0.3):
+        """
+        提取法律条例的概括词，提取结果直接保存在类的属性中，保存至data.json文件中
+        为法律条例对象添加keywords、textrank、tfidf属性：
+            keywords    本文提取的概括词
+            textrank、tfidf  用于对比性能
+
+        方法逻辑：
+        1   使用词性和依存句法分析提取出候选词
+        2   使用tfidf和textrank进行候选词排序
+        3   将候选词合并为语块
+        4   如果有分点的条目，单独提取分点条目的关键词
+
+        :param law: Law() 单部法律
+        :param textrank_rate: textrank_rate为textrank方法参与排序的比重；tfidf方法参与排序的比重为(1-textrank_rate)
+        """
         general_term = set()
         m = re.search('中华人民共和国(.+)法', law.name)
         if m is not None:
@@ -69,23 +84,24 @@ class Extractor(object):
                     for sent in [x for x in re.split('，|。|：|；|……|！|？', ent.content) if x]:
                         seg = self._segment(sent, general_term)
                         words.update(seg)
+                        # 使用词性和依存句法分析提取出候选词
                         candidate.update(self._extract_candidate_words(seg))
                     self.filter_rate.append(len(candidate) / len(words))
 
-                    # 候选词排序排序
-                    #   tf-idf 方法
+                    # 候选词排序
+                    #   tf-idf
                     tfidf_weight = {vocab[i]: w for i, w in enumerate(tfidf_vec[entry_idx]) if w != 0}
                     tfidf_weight_sum = sum(tfidf_weight.values())  # 归一化
                     tfidf_weight = {word: weight / tfidf_weight_sum for word, weight in tfidf_weight.items()}
                     sorted_word = [i[0] for i in sorted(tfidf_weight.items(), key=lambda d: d[1], reverse=True)]
                     ent.tfidf = sorted_word[:4]
-                    #   textrank 方法
+                    #   textrank
                     textrank_weight = textrank_keyword([w for w in ent.segment if w in tfidf_weight.keys()])
                     ent.textrank = [i[0] for i in sorted(textrank_weight.items(), key=lambda d: d[1], reverse=True)][:4]
                     #   综合方法
-                    if textrank:
-                        weight = {w: 0.7 * tfidf_weight[w] + 0.3 * textrank_weight[w] for w in textrank_weight.keys()}
-                        sorted_word = [i[0] for i in sorted(weight.items(), key=lambda d: d[1], reverse=True)]
+                    weight = {w: (1 - textrank_rate) * tfidf_weight[w] + textrank_rate * textrank_weight[w]
+                              for w in textrank_weight.keys()}
+                    sorted_word = [i[0] for i in sorted(weight.items(), key=lambda d: d[1], reverse=True)]
 
                     ent.candidate = [word for word in sorted_word if word in candidate]
 
@@ -222,7 +238,8 @@ class Extractor(object):
 
     def _segment(self, sent, general_term):
         """
-        考虑统称词的分词分词
+        考虑统称词的分词
+        统称词：xxxxx统称为XX，XX定义为统称词
         :param sent: 原句子
         :param general_term: 统称词集合
         :return: 将统称词分为一个词的分词结果
@@ -251,4 +268,4 @@ class Extractor(object):
 
 
 if __name__ == '__main__':
-    Extractor()
+    Extractor().run()

@@ -4,14 +4,17 @@
 @author : 王晨懿
 @studentID : 1162100102
 @time : 2019/6/7
+
+法律文本预处理
+
+法律的结构：Law -> Chapter -> Section -> Entry
+个别法律没有Chapter和Section
 """
 import os
 import re
 import json
 
-DIR_PATH = os.path.dirname(os.path.abspath(__file__))
-DATA_PATH = os.path.join(DIR_PATH, os.pardir, 'data')
-LAW_PATH = os.path.join(DATA_PATH, 'law_text')
+import config
 
 FLAG_Chapter = 1
 FLAG_Section = 2
@@ -23,13 +26,16 @@ def index_all(lst, val):
 
 
 class Law(object):
+
     def __init__(self, name, lines, mark, load=None):
         if load is not None:
+            """json -> class"""
             self.name = load['name']
             self.has_chapter = load['has_chapter']
             self.chapters = [Chapter(None, None, load=x) for x in load['chapters']]
             return
 
+        # 解析文本
         self.name = name
         self.chapters = []
 
@@ -56,6 +62,7 @@ class Law(object):
                              zip(chapter_idx, (chapter_idx + [len(lines)])[1:])]
 
     def dumps(self):
+        """class -> json"""
         this = dict()
         this['name'] = self.name
         this['has_chapter'] = self.has_chapter
@@ -66,12 +73,14 @@ class Law(object):
 class Chapter(object):
     def __init__(self, lines, mark, load=None):
         if load is not None:
+            """json -> class"""
             self.title = load['title']
             self.name = load['name']
             self.has_section = load['has_section']
             self.sections = [Section(None, None, load=x) for x in load['sections']]
             return
 
+        # 解析文本
         self.title = lines[0] if mark[0] == FLAG_Chapter else ''
         self.name = ''
         if mark[0] == FLAG_Chapter:
@@ -87,6 +96,7 @@ class Chapter(object):
             Section(lines, mark)]
 
     def dumps(self):
+        """class -> json"""
         this = dict()
         this['title'] = self.title
         this['name'] = self.name
@@ -98,11 +108,13 @@ class Chapter(object):
 class Section(object):
     def __init__(self, lines, mark, load=None):
         if load is not None:
+            """json -> class"""
             self.title = load['title']
             self.name = load['name']
             self.entrys = [Entry(None, None, load=x) for x in load['entrys']]
             return
 
+        # 解析文本
         self.title = lines[0] if mark[0] == FLAG_Section else ''
         self.name = ''
         if mark[0] == FLAG_Section:
@@ -112,6 +124,7 @@ class Section(object):
         self.entrys = [Entry(lines[a:b], mark[a:b]) for a, b in zip(entry_idx, (entry_idx + [len(lines)])[1:])]
 
     def dumps(self):
+        """class -> json"""
         this = dict()
         this['title'] = self.title
         this['name'] = self.name
@@ -122,6 +135,7 @@ class Section(object):
 class Entry(object):
     def __init__(self, lines, mark, load=None):
         if load is not None:
+            """json -> class"""
             self.title = load['title']
             self.content = load['content']
             self.lines = load['lines']
@@ -132,12 +146,19 @@ class Entry(object):
             self.tfidf, self.textrank = load['tfidf'], load['textrank']
             return
 
+        ## 解析文本
+        # 标题
         self.title = re.search('第[\u4E00-\u9FA5]+?条', lines[0]).group()
+        # 文本
         self.content = re.search('第[\u4E00-\u9FA5]+?条(.+)', lines[0]).group(1).strip().replace(' ', '')
         self.lines = '\n'.join(lines)
+        # 分点的内容
         self.lst = []
+        # 分词结果
         self.segment = []
+        # 候选词
         self.candidate = []
+        # tf-idf方法 textrank方法 提取的概括词
         self.tfidf, self.textrank = [], []
         for line in lines[1:]:
             m = re.match(r'（\w+）(.+)', line)
@@ -149,6 +170,7 @@ class Entry(object):
         self.keywords = []
 
     def dumps(self):
+        """class -> json"""
         this = dict()
         this['title'] = self.title
         this['content'] = self.content
@@ -160,10 +182,10 @@ class Entry(object):
 
 
 def preprocessed():
-    filepath_lst = os.listdir(LAW_PATH)
+    filepath_lst = os.listdir(config.text_path)
     law_lst = []
     for file in filepath_lst:
-        with open(os.path.join(LAW_PATH, file), 'r', encoding='gbk', errors="ignore")as f:
+        with open(os.path.join(config.text_path, file), 'r', encoding='gbk', errors="ignore")as f:
             lines = [line.strip().replace('\u3000', ' ') for line in f.readlines()]
             lines = [line for line in lines if len(lines) > 0 and not line.startswith('北大法宝')]
 
@@ -183,19 +205,20 @@ def preprocessed():
     return law_lst
 
 
-def save_data(law_lst, filepath='data.json'):
+def save_data(law_lst, path=config.save_path):
     for law in law_lst:
-        with open(os.path.join(DATA_PATH, 'law_preprocessed', law.name + '.json'), 'w', encoding='utf-8')as json_f:
+        with open(os.path.join(config.data_path, 'law_preprocessed', law.name + '.json'), 'w',
+                  encoding='utf-8')as json_f:
             json.dump(law.dumps(), json_f, indent=4, ensure_ascii=False)
 
-    with open(os.path.join(DATA_PATH, 'data.json'), 'w', encoding='utf-8')as f:
+    with open(path, 'w', encoding='utf-8')as f:
         for law in law_lst:
             json.dump(law.dumps(), f, ensure_ascii=False)
             f.write('\n')
 
 
-def load_data():
-    with open(os.path.join(DATA_PATH, 'data.json'), 'r', encoding='utf-8')as f:
+def load_data(path=config.save_path):
+    with open(path, 'r', encoding='utf-8')as f:
         lines = f.readlines()
     trees = [Law(None, None, None, load=json.loads(x)) for x in lines]
     return trees

@@ -10,8 +10,8 @@ import random
 import torch
 from torch import nn
 import torch.nn.functional as F
-from extract_keyword.seq2seq.preprocess import prepare_data
-from extract_keyword.seq2seq.tool import timeSince
+from extract.seq2seq.preprocess import prepare_data
+from extract.seq2seq.tool import timeSince
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 

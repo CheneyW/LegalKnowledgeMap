@@ -14,9 +14,9 @@ import torch
 import jieba
 
 DIR_PATH = os.path.dirname(os.path.abspath(__file__))
-CORPUS_PATH = os.path.join(DIR_PATH, os.pardir, os.pardir, 'corpus_labeling', 'corpus.json')
+CORPUS_PATH = os.path.join(DIR_PATH, os.pardir, os.pardir, 'corpus_labeling', 'corpus2.json')
 
-CORPUS_NUM = 17727
+CORPUS_NUM = 500
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 

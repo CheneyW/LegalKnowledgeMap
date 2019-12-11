@@ -4,21 +4,17 @@
 @author : 王晨懿
 @studentID : 1162100102
 @time : 2019/8/30
+
+评价 使用 Micro F1
 """
-import os
 import json
 
+import config
 from preprocessed.parse_law_file import load_data
 
-DIR_PATH = os.path.dirname(os.path.abspath(__file__))
-CORPUS_PATH = os.path.join(DIR_PATH, os.pardir, os.pardir, 'corpus_labeling', 'corpus2.json')
-DATA_PATH = os.path.join(DIR_PATH, os.pardir, os.pardir, 'data', 'data.json')
-
-CORPUS_NUM = 250
-
 corpus = {}
-with open(CORPUS_PATH, 'r', encoding='utf-8')as f:
-    for sample in json.load(f)[:CORPUS_NUM]:
+with open(config.corpus_path, 'r', encoding='utf-8')as f:
+    for sample in json.load(f)[:config.corpus_num]:
         corpus[sample['content']] = sample['keywords'].split()
 
 law_lst = load_data()
